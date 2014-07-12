@@ -215,7 +215,7 @@ static int uv_udp_maybe_bind(uv_udp_t* handle,
     /* available, or when run on XP/2003 which have no support for dualstack */
     /* sockets. For now we're silently ignoring the error. */
     setsockopt(handle->socket,
-               IPPROTO_IPV6,
+               41/*IPPROTO_IPV6*/,
                IPV6_V6ONLY,
                (char*) &no,
                sizeof no);
@@ -600,6 +600,42 @@ static int uv__udp_set_membership4(uv_udp_t* handle,
   return 0;
 }
 
+#ifndef IPPROTO_IPV6
+	#define IPPROTO_IPV6 41
+#endif
+
+#ifndef IPV6_MULTICAST_IF
+	#define IPV6_MULTICAST_IF 9
+#endif
+#ifndef IPV6_ADD_MEMBERSHIP
+	#define IPV6_ADD_MEMBERSHIP 12
+#endif
+#ifndef IPV6_DROP_MEMBERSHIP
+	#define IPV6_DROP_MEMBERSHIP 13
+#endif
+
+#ifndef IPV6_MREQ
+	struct in6_addr {
+	  u_char  s6_addr[16];
+	};
+	typedef struct ipv6_mreq {
+	  struct in6_addr ipv6mr_multiaddr;
+	  unsigned int    ipv6mr_interface;
+	} IPV6_MREQ, *PIPV6_MREQ;
+#endif
+
+/* The ws2tcpip.h header included in VC6 doesn't define the
+ * sin6_scope_id member of sockaddr_in6.  We define our own
+ * version and redefine sockaddr_in6 to point to this one.
+ */
+struct liigo_sockaddr_in6 {
+  short sin6_family;
+  u_short sin6_port;
+  u_long sin6_flowinfo;
+  struct in6_addr sin6_addr;
+  u_long sin6_scope_id;
+};
+#define sockaddr_in6 liigo_sockaddr_in6
 
 int uv__udp_set_membership6(uv_udp_t* handle,
                             const struct sockaddr_in6* multicast_addr,
@@ -789,7 +825,7 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
     } else {                                                                  \
       /* Set IPv6 socket option */                                            \
       if (setsockopt(handle->socket,                                          \
-                     IPPROTO_IPV6,                                            \
+                     41/*IPPROTO_IPV6*/,                                      \
                      option6,                                                 \
                      (char*) &optval,                                         \
                      sizeof optval)) {                                        \
@@ -809,11 +845,11 @@ SOCKOPT_SETTER(ttl,
                VALIDATE_TTL)
 SOCKOPT_SETTER(multicast_ttl,
                IP_MULTICAST_TTL,
-               IPV6_MULTICAST_HOPS,
+               10/*IPV6_MULTICAST_HOPS*/,
                VALIDATE_MULTICAST_TTL)
 SOCKOPT_SETTER(multicast_loop,
                IP_MULTICAST_LOOP,
-               IPV6_MULTICAST_LOOP,
+               11/*IPV6_MULTICAST_LOOP*/,
                VALIDATE_MULTICAST_LOOP)
 
 #undef SOCKOPT_SETTER

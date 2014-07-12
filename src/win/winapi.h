@@ -23,7 +23,8 @@
 #define UV_WIN_WINAPI_H_
 
 #include <windows.h>
-
+#include "psapi/psapi.h"
+#include "Iphlpapi/IPTypes.h"
 
 /*
  * Ntdll headers
@@ -4110,7 +4111,7 @@
 
 /* from ntifs.h */
 /* MinGW already has it, mingw-w64 does not. */
-#if defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR)
+#if /*defined(_MSC_VER) ||*/ defined(__MINGW64_VERSION_MAJOR)
   typedef struct _REPARSE_DATA_BUFFER {
     ULONG  ReparseTag;
     USHORT ReparseDataLength;
@@ -4137,6 +4138,8 @@
     } DUMMYUNIONNAME;
   } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 #endif
+
+typedef unsigned int* ULONG_PTR;
 
 typedef struct _IO_STATUS_BLOCK {
   union {
@@ -4555,6 +4558,13 @@ typedef NTSTATUS (NTAPI *sNtQuerySystemInformation)
 # define ERROR_SYMLINK_NOT_SUPPORTED 1464
 #endif
 
+typedef struct _OVERLAPPED_ENTRY {
+  ULONG_PTR    lpCompletionKey;
+  LPOVERLAPPED lpOverlapped;
+  ULONG_PTR    Internal;
+  DWORD        dwNumberOfBytesTransferred;
+} OVERLAPPED_ENTRY, *LPOVERLAPPED_ENTRY;
+
 typedef BOOL (WINAPI *sGetQueuedCompletionStatusEx)
              (HANDLE CompletionPort,
               LPOVERLAPPED_ENTRY lpCompletionPortEntries,
@@ -4617,6 +4627,71 @@ typedef VOID (WINAPI* sWakeAllConditionVariable)
 typedef VOID (WINAPI* sWakeConditionVariable)
              (PCONDITION_VARIABLE ConditionVariable);
 
+typedef BOOL (WINAPI* sUnregisterWait) (HANDLE WaitHandle);
+
+typedef BOOL (WINAPI* sUnregisterWaitEx) (HANDLE WaitHandle, HANDLE CompletionEvent);
+
+typedef VOID (CALLBACK* WAITORTIMERCALLBACK) (PVOID lpParameter, BOOLEAN TimerOrWaitFired);
+typedef BOOL (WINAPI* sRegisterWaitForSingleObject)
+             (PHANDLE phNewWaitObject,
+              HANDLE hObject,
+              WAITORTIMERCALLBACK Callback,
+              PVOID Context,
+              ULONG dwMilliseconds,
+              ULONG dwFlags);
+
+typedef struct _MEMORYSTATUSEX {
+	DWORD     dwLength;
+	DWORD     dwMemoryLoad;
+	DWORDLONG ullTotalPhys;
+	DWORDLONG ullAvailPhys;
+	DWORDLONG ullTotalPageFile;
+	DWORDLONG ullAvailPageFile;
+	DWORDLONG ullTotalVirtual;
+	DWORDLONG ullAvailVirtual;
+	DWORDLONG ullAvailExtendedVirtual;
+} MEMORYSTATUSEX, *LPMEMORYSTATUSEX;
+typedef BOOL (WINAPI* sGlobalMemoryStatusEx) (LPMEMORYSTATUSEX lpBuffer);
+
+typedef BOOL (WINAPI* sQueueUserWorkItem)
+             (LPTHREAD_START_ROUTINE Function,
+              PVOID Context,
+              ULONG Flags);
+
+typedef BOOL (WINAPI* sGetProcessMemoryInfo)
+             (HANDLE Process,
+              PPROCESS_MEMORY_COUNTERS ppsmemCounters,
+              DWORD cb);
+
+typedef ULONG (WINAPI* sGetAdaptersAddresses)
+              (ULONG Family,
+               ULONG Flags,
+               PVOID Reserved,
+               PIP_ADAPTER_ADDRESSES AdapterAddresses,
+               PULONG SizePointer);
+
+typedef PVOID (WINAPI* sInterlockedCompareExchangePointer)
+              (PVOID volatile *Destination,
+               PVOID Exchange,
+               PVOID Comparand);
+typedef LONG (WINAPI* sInterlockedCompareExchange32)
+             (LONG volatile *Destination,
+              LONG Exchange,
+              LONG Comparand);
+typedef LONGLONG (WINAPI* sInterlockedCompareExchange64)
+                 (LONGLONG volatile *Destination,
+                  LONGLONG Exchange,
+                  LONGLONG Comparand);
+
+typedef void (WSAAPI* sFreeAddrInfoW)
+             (PADDRINFOW pAddrInfo);
+
+typedef int (WSAAPI* sGetAddrInfoW)
+            (PCWSTR pNodeName,
+             PCWSTR pServiceName,
+             const ADDRINFOW *pHints,
+             PADDRINFOW *ppResult);
+
 
 /* Ntdll function pointers */
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
@@ -4644,5 +4719,17 @@ extern sSleepConditionVariableCS pSleepConditionVariableCS;
 extern sSleepConditionVariableSRW pSleepConditionVariableSRW;
 extern sWakeAllConditionVariable pWakeAllConditionVariable;
 extern sWakeConditionVariable pWakeConditionVariable;
+extern sUnregisterWait pUnregisterWait;
+extern sUnregisterWaitEx pUnregisterWaitEx;
+extern sRegisterWaitForSingleObject pRegisterWaitForSingleObject;
+extern sGlobalMemoryStatusEx pGlobalMemoryStatusEx;
+extern sQueueUserWorkItem pQueueUserWorkItem;
+extern sGetProcessMemoryInfo pGetProcessMemoryInfo;
+extern sGetAdaptersAddresses pGetAdaptersAddresses;
+extern sInterlockedCompareExchangePointer pInterlockedCompareExchangePointer;
+extern sInterlockedCompareExchange32 pInterlockedCompareExchange32;
+extern sInterlockedCompareExchange64 pInterlockedCompareExchange64;
+extern sFreeAddrInfoW pFreeAddrInfoW;
+extern sGetAddrInfoW pGetAddrInfoW;
 
 #endif /* UV_WIN_WINAPI_H_ */

@@ -436,6 +436,30 @@ typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   const char* hostname,
                                   const char* service);
 
+//http://msdn.microsoft.com/en-us/library/windows/desktop/ms737530(v=vs.85).aspx
+typedef struct addrinfo {
+  int             ai_flags;
+  int             ai_family;
+  int             ai_socktype;
+  int             ai_protocol;
+  size_t          ai_addrlen;
+  char            *ai_canonname;
+  struct sockaddr  *ai_addr;
+  struct addrinfo  *ai_next;
+} ADDRINFOA, *PADDRINFOA;
+
+//http://msdn.microsoft.com/en-us/library/windows/desktop/ms737529(v=vs.85).aspx
+typedef struct addrinfoW {
+  int              ai_flags;
+  int              ai_family;
+  int              ai_socktype;
+  int              ai_protocol;
+  size_t           ai_addrlen;
+  PWSTR            ai_canonname;
+  struct sockaddr  *ai_addr;
+  struct addrinfoW  *ai_next;
+} ADDRINFOW, *PADDRINFOW;
+
 typedef struct {
   long tv_sec;
   long tv_nsec;
@@ -508,6 +532,14 @@ struct uv_req_s {
   UV_REQ_FIELDS
 };
 
+
+//http://stackoverflow.com/questions/1345109/why-sockaddr-storage-structure-defined-as-the-way-it-is-defined
+struct sockaddr_storage {
+  short   ss_family;
+  char    __ss_pad1[6];
+  int64_t __ss_align;
+  char    __ss_pad2[112];
+};
 
 /* Platform-specific request types. */
 UV_PRIVATE_REQ_TYPES
@@ -766,6 +798,15 @@ UV_EXTERN int uv_stream_set_blocking(uv_stream_t* handle, int blocking);
  */
 UV_EXTERN int uv_is_closing(const uv_handle_t* handle);
 
+
+  typedef BOOL (PASCAL *LPFN_CONNECTEX)
+                      (SOCKET s,
+                       const struct sockaddr* name,
+                       int namelen,
+                       PVOID lpSendBuffer,
+                       DWORD dwSendDataLength,
+                       LPDWORD lpdwBytesSent,
+                       LPOVERLAPPED lpOverlapped);
 
 /*
  * uv_tcp_t is a subclass of uv_stream_t.
@@ -1504,6 +1545,14 @@ UV_EXTERN int uv_getaddrinfo(uv_loop_t* loop,
  */
 UV_EXTERN void uv_freeaddrinfo(struct addrinfo* ai);
 
+
+#ifndef NI_MAXHOST
+# define NI_MAXHOST 1025
+#endif
+
+#ifndef NI_MAXSERV
+# define NI_MAXSERV 32
+#endif
 
 /*
 * uv_getnameinfo_t is a subclass of uv_req_t.

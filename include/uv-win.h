@@ -241,6 +241,12 @@ typedef union {
   } fallback;
 } uv_cond_t;
 
+
+//http://blog.csdn.net/xiewneqi/article/details/4787156
+typedef struct SRWLOCK {
+	void* ptr;
+} SRWLOCK, *PSRWLOCK;
+
 typedef union {
   /* srwlock_ has type SRWLOCK, but not all toolchains define this type in */
   /* windows.h. */

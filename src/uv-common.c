@@ -110,6 +110,28 @@ int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr) {
   return uv_inet_pton(AF_INET, ip, &(addr->sin_addr.s_addr));
 }
 
+#ifndef IPV6_MREQ
+	struct in6_addr {
+	  u_char  s6_addr[16];
+	};
+	typedef struct ipv6_mreq {
+	  struct in6_addr ipv6mr_multiaddr;
+	  unsigned int    ipv6mr_interface;
+	} IPV6_MREQ, *PIPV6_MREQ;
+#endif
+
+/* The ws2tcpip.h header included in VC6 doesn't define the
+ * sin6_scope_id member of sockaddr_in6.  We define our own
+ * version and redefine sockaddr_in6 to point to this one.
+ */
+struct liigo_sockaddr_in6 {
+  short sin6_family;
+  u_short sin6_port;
+  u_long sin6_flowinfo;
+  struct in6_addr sin6_addr;
+  u_long sin6_scope_id;
+};
+#define sockaddr_in6 liigo_sockaddr_in6
 
 int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
   char address_part[40];

@@ -77,13 +77,13 @@
   }
 
 #define FILETIME_TO_UINT(filetime)                                          \
-   (*((uint64_t*) &(filetime)) - 116444736000000000ULL)
+   (*((uint64_t*) &(filetime)) - 116444736000000000)
 
 #define FILETIME_TO_TIME_T(filetime)                                        \
-   (FILETIME_TO_UINT(filetime) / 10000000ULL)
+   (FILETIME_TO_UINT(filetime) / 10000000)
 
 #define FILETIME_TO_TIME_NS(filetime, secs)                                 \
-   ((FILETIME_TO_UINT(filetime) - (secs * 10000000ULL)) * 100)
+   ((FILETIME_TO_UINT(filetime) - (secs * 10000000)) * 100)
 
 #define FILETIME_TO_TIMESPEC(ts, filetime)                                  \
    do {                                                                     \
@@ -93,8 +93,8 @@
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
   do {                                                                      \
-    uint64_t bigtime = ((int64_t) (time) * 10000000LL) +                    \
-                                  116444736000000000ULL;                    \
+    uint64_t bigtime = ((int64_t) (time) * 10000000) +                    \
+                                  116444736000000000;                    \
     (filetime_ptr)->dwLowDateTime = bigtime & 0xFFFFFFFF;                   \
     (filetime_ptr)->dwHighDateTime = bigtime >> 32;                         \
   } while(0)
@@ -231,6 +231,14 @@ INLINE static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req,
   req->cb = cb;
 }
 
+static int is_path_dir(const WCHAR* path) {
+  DWORD attr = GetFileAttributesW(path);
+  if (attr != (DWORD)-1/*INVALID_FILE_ATTRIBUTES*/) {
+    return attr & FILE_ATTRIBUTE_DIRECTORY ? 1 : 0;
+  } else {
+    return 0;
+  }
+}
 
 INLINE static int fs__readlink_handle(HANDLE handle, char** target_ptr,
     uint64_t* target_len_ptr) {
@@ -279,7 +287,7 @@ INLINE static int fs__readlink_handle(HANDLE handle, char** target_ptr,
            (w_target[4] >= L'a' && w_target[4] <= L'z')) &&
           w_target[5] == L':' &&
           (w_target_len == 6 || w_target[6] == L'\\')) {
-        /* \??\«drive»:\ */
+        /* \??\«drive?\ */
         w_target += 4;
         w_target_len -= 4;
 
@@ -304,7 +312,7 @@ INLINE static int fs__readlink_handle(HANDLE handle, char** target_ptr,
     w_target_len = reparse_data->MountPointReparseBuffer.SubstituteNameLength /
         sizeof(WCHAR);
 
-    /* Only treat junctions that look like \??\«drive»:\ as symlink. */
+    /* Only treat junctions that look like \??\«drive?\ as symlink. */
     /* Junctions can also be used as mount points, like \??\Volume{«guid»}, */
     /* but that's confusing for programs since they wouldn't be able to */
     /* actually understand such a path when returned by uv_readlink(). */
@@ -752,7 +760,12 @@ void fs__readdir(uv_fs_t* req) {
     uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
   }
 
+#ifdef _MSC_VER
+  swprintf(path2, fmt, pathw);
+#else
   _snwprintf(path2, len + 3, fmt, pathw);
+#endif
+
   dir = FindFirstFileW(path2, &ent);
   free(path2);
 
@@ -914,7 +927,7 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
 
   /* st_blocks contains the on-disk allocation size in 512-byte units. */
   statbuf->st_blocks =
-      file_info.StandardInformation.AllocationSize.QuadPart >> 9ULL;
+      file_info.StandardInformation.AllocationSize.QuadPart >> 9;
 
   statbuf->st_nlink = file_info.StandardInformation.NumberOfLinks;
 

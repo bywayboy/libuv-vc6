@@ -33,8 +33,12 @@
 
 #include <winsock2.h>
 #include <winperf.h>
-#include <iphlpapi.h>
-#include <psapi.h>
+
+#define s6_addr
+#include "Iphlpapi/iphlpapi.h"
+#undef s6_addr
+
+#include "psapi/psapi.h"
 #include <tlhelp32.h>
 #include <windows.h>
 
@@ -314,7 +318,7 @@ uint64_t uv_get_free_memory(void) {
   MEMORYSTATUSEX memory_status;
   memory_status.dwLength = sizeof(memory_status);
 
-  if (!GlobalMemoryStatusEx(&memory_status)) {
+  if (!pGlobalMemoryStatusEx(&memory_status)) {
      return -1;
   }
 
@@ -326,7 +330,7 @@ uint64_t uv_get_total_memory(void) {
   MEMORYSTATUSEX memory_status;
   memory_status.dwLength = sizeof(memory_status);
 
-  if (!GlobalMemoryStatusEx(&memory_status)) {
+  if (!pGlobalMemoryStatusEx(&memory_status)) {
     return -1;
   }
 
@@ -492,7 +496,7 @@ int uv_resident_set_memory(size_t* rss) {
 
   current_process = GetCurrentProcess();
 
-  if (!GetProcessMemoryInfo(current_process, &pmc, sizeof(pmc))) {
+  if (!pGetProcessMemoryInfo(current_process, &pmc, sizeof(pmc))) {
     return uv_translate_sys_error(GetLastError());
   }
 
@@ -552,7 +556,8 @@ int uv_uptime(double* uptime) {
 
   data_block = (PERF_DATA_BLOCK*) buffer;
 
-  if (wmemcmp(data_block->Signature, L"PERF", 4) != 0)
+  // if (wmemcmp(data_block->Signature, L"PERF", 4) != 0)
+  if(data_block->Signature[0]!=L'P' || data_block->Signature[1]!=L'E' || data_block->Signature[2]!=L'R' || data_block->Signature[3]!=L'F')
     goto internalError;
 
   if (data_size < data_block->HeaderLength + sizeof(*object_type))
@@ -580,8 +585,8 @@ int uv_uptime(double* uptime) {
         BYTE* address = (BYTE*) object_type + object_type->DefinitionLength +
                         counter_definition->CounterOffset;
         uint64_t value = *((uint64_t*) address);
-        *uptime = (double) (object_type->PerfTime.QuadPart - value) /
-                  (double) object_type->PerfFreq.QuadPart;
+        *uptime = (double) (__int64)(object_type->PerfTime.QuadPart - value) /
+                  (double) (__int64)object_type->PerfFreq.QuadPart;
         free(malloced_buffer);
         return 0;
       }
@@ -799,7 +804,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     /* If win_address_buf is 0, then GetAdaptersAddresses will fail with */
     /* ERROR_BUFFER_OVERFLOW, and the required buffer size will be stored in */
     /* win_address_buf_size. */
-    r = GetAdaptersAddresses(AF_UNSPEC,
+    r = pGetAdaptersAddresses(AF_UNSPEC,
                              GAA_FLAG_INCLUDE_PREFIX,
                              NULL,
                              win_address_buf,
@@ -968,7 +973,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
       }
 
       uv_address->is_internal =
-          (win_address->IfType == IF_TYPE_SOFTWARE_LOOPBACK);
+          (win_address->IfType == 24/*IF_TYPE_SOFTWARE_LOOPBACK*/);
 
       if (sa->sa_family == AF_INET6) {
         uv_address->address.address6 = *((struct sockaddr_in6 *) sa);
