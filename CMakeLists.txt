@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 2.6)
-
 PROJECT(uv)
 
 SET(CMAKE_C_FLAGS "-std=c89 -O2 -pedantic -Wall -Wextra -Wno-unused-parameter -D_LARGEFILE_SOURCE -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64")
